@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kustoforge"
+version = "1.0.0"
+description = "A desktop KQL query builder for Microsoft security and Azure services"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Chris Huber", email = "chrishbr47@gmail.com"},
+]
+keywords = ["kql", "kusto", "azure", "sentinel", "defender", "security", "query-builder"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: System :: Systems Administration",
+]
+dependencies = [
+    "PySide6>=6.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/ChrisHuber1/KustoForge"
+Issues = "https://github.com/ChrisHuber1/KustoForge/issues"
+
+[project.scripts]
+kustoforge = "main:main"
+
+[tool.setuptools]
+py-modules = ["main", "engine", "schemas", "ui_builder"]
