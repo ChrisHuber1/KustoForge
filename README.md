@@ -4,6 +4,8 @@ A desktop KQL (Kusto Query Language) query builder for Microsoft security and Az
 
 Built for SOC analysts, security engineers, cloud admins, and anyone working with Microsoft's KQL-powered services.
 
+![KustoForge Demo](screenshots/demo.png)
+
 ## Features
 
 - **Form-based query building** - Select a table, add filters, pick output columns, and get valid KQL
