@@ -59,7 +59,9 @@ class KqlHighlighter(QSyntaxHighlighter):
 
     def highlightBlock(self, text):
         import re
-        if self.currentBlock().blockNumber() == 0:
+        # Only treat line 0 as a bare table name when it actually is one
+        # (a single identifier). Raw queries may start with //, let, or a pipe.
+        if self.currentBlock().blockNumber() == 0 and re.match(r"^\w+$", text.strip()):
             fmt = QTextCharFormat()
             fmt.setForeground(QColor("#4ec9b0"))
             fmt.setFontWeight(QFont.Bold)
@@ -209,6 +211,7 @@ class QueryBuilderWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._filter_rows = []
+        self._raw_mode = False
 
         splitter = QSplitter(Qt.Horizontal, self)
         main_layout = QVBoxLayout(self)
@@ -380,6 +383,17 @@ class QueryBuilderWidget(QWidget):
         grp = QGroupBox("Generated KQL Query")
         layout = QVBoxLayout(grp)
 
+        mode_row = QHBoxLayout()
+        self.raw_mode_check = QCheckBox("Edit / paste raw KQL")
+        self.raw_mode_check.setToolTip(
+            "Free-form mode: paste or write full KQL (mv-expand, summarize, joins, "
+            "let). The builder form is ignored while this is on."
+        )
+        self.raw_mode_check.stateChanged.connect(self._toggle_raw_mode)
+        mode_row.addWidget(self.raw_mode_check)
+        mode_row.addStretch()
+        layout.addLayout(mode_row)
+
         self.preview = QPlainTextEdit()
         self.preview.setObjectName("queryPreview")
         self.preview.setReadOnly(True)
@@ -528,9 +542,39 @@ class QueryBuilderWidget(QWidget):
     def _update_remove_buttons(self):
         pass
 
+    def _toggle_raw_mode(self, _state=None):
+        enabled = self.raw_mode_check.isChecked()
+        if enabled == self._raw_mode:
+            return
+        if enabled:
+            # Entering raw mode: keep whatever is in the box as a starting point.
+            self._raw_mode = True
+            self.preview.setReadOnly(False)
+            self.status_message.emit("Raw KQL mode — builder form is ignored")
+        else:
+            # Leaving raw mode regenerates from the form, discarding manual edits.
+            if self.preview.toPlainText().strip():
+                reply = QMessageBox.question(
+                    self, "Switch to Builder?",
+                    "Builder mode regenerates the query from the form. "
+                    "Your manual edits will be lost. Continue?",
+                    QMessageBox.Yes | QMessageBox.No,
+                )
+                if reply != QMessageBox.Yes:
+                    self.raw_mode_check.blockSignals(True)
+                    self.raw_mode_check.setChecked(True)
+                    self.raw_mode_check.blockSignals(False)
+                    return
+            self._raw_mode = False
+            self.preview.setReadOnly(True)
+            self._refresh_preview()
+            self.status_message.emit("Builder mode")
+
     def _refresh_preview(self):
         if not hasattr(self, "time_enabled") or not hasattr(self, "preview"):
             return
+        if getattr(self, "_raw_mode", False):
+            return  # form changes never overwrite hand-edited raw KQL
         table = self.table_combo.currentText()
         if not table:
             return
@@ -577,6 +621,11 @@ class QueryBuilderWidget(QWidget):
             self.status_message.emit("Query copied to clipboard")
 
     def _clear_form(self):
+        if getattr(self, "_raw_mode", False):
+            self.preview.clear()
+            self.query_name_edit.clear()
+            self.status_message.emit("Raw query cleared")
+            return
         self.time_enabled.setChecked(True)
         self.time_value.setValue(1)
         self.time_unit.setCurrentIndex(0)
@@ -694,7 +743,11 @@ class QueryBuilderWidget(QWidget):
         lib = self._load_library()
         self.library_list.clear()
         for name in sorted(lib["queries"].keys()):
-            self.library_list.addItem(name)
+            item = QListWidgetItem(name)
+            if lib["queries"][name].get("kind") == "raw":
+                item.setForeground(QColor("#ce9178"))
+                item.setToolTip("Raw KQL query (free-form, loads into the editor)")
+            self.library_list.addItem(item)
 
     def _save_query(self):
         name = self.query_name_edit.text().strip()
@@ -712,10 +765,22 @@ class QueryBuilderWidget(QWidget):
             if reply != QMessageBox.Yes:
                 return
 
-        lib["queries"][name] = {
-            "saved_at": datetime.now().isoformat(timespec="seconds"),
-            **self._get_form_state(),
-        }
+        if getattr(self, "_raw_mode", False):
+            text = self.preview.toPlainText().strip()
+            if not text:
+                QMessageBox.warning(self, "Save Query", "The raw query is empty.")
+                return
+            lib["queries"][name] = {
+                "saved_at": datetime.now().isoformat(timespec="seconds"),
+                "kind": "raw",
+                "raw": self.preview.toPlainText(),
+            }
+        else:
+            lib["queries"][name] = {
+                "saved_at": datetime.now().isoformat(timespec="seconds"),
+                "kind": "structured",
+                **self._get_form_state(),
+            }
         self._save_library(lib)
         self._load_library_list()
         self.status_message.emit(f'Query "{name}" saved')
@@ -733,7 +798,22 @@ class QueryBuilderWidget(QWidget):
             QMessageBox.warning(self, "Load Query", f'Query "{name}" not found.')
             return
 
-        self._set_form_state(state)
+        if state.get("kind") == "raw":
+            # Raw queries can't drive the form — load straight into the editor.
+            self.raw_mode_check.blockSignals(True)
+            self.raw_mode_check.setChecked(True)
+            self.raw_mode_check.blockSignals(False)
+            self._raw_mode = True
+            self.preview.setReadOnly(False)
+            self.preview.setPlainText(state.get("raw", ""))
+        else:
+            if getattr(self, "_raw_mode", False):
+                self.raw_mode_check.blockSignals(True)
+                self.raw_mode_check.setChecked(False)
+                self.raw_mode_check.blockSignals(False)
+                self._raw_mode = False
+                self.preview.setReadOnly(True)
+            self._set_form_state(state)
         self.query_name_edit.setText(name)
         self.status_message.emit(f'Query "{name}" loaded')
 

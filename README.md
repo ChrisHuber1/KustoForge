@@ -12,7 +12,8 @@ Built for SOC analysts, security engineers, cloud admins, and anyone working wit
 - **52 tables across 9 service categories** - Full coverage of the Microsoft KQL ecosystem
 - **Smart operator selection** - Operators change based on column data type (string, int, datetime, bool, dynamic)
 - **Live query preview** - See the KQL update in real-time as you fill out the form, with syntax highlighting
-- **Query library** - Save, load, and manage named queries in a local JSON file
+- **Raw KQL mode** - Toggle "Edit / paste raw KQL" to write or paste full free-form queries (`mv-expand`, `summarize`, `join`, `let`) that the form can't express, then save them to the library
+- **Query library** - Save, load, and manage named queries in a local JSON file (both form-built and raw)
 - **Copy to clipboard** - One click to copy the generated query
 - **Dark theme** - Professional dark UI with Microsoft blue accents
 - **Keyboard shortcuts** - Ctrl+Shift+C (copy), Ctrl+S (save), Ctrl+N (clear)
@@ -93,6 +94,15 @@ kustoforge
 2. Enter a name in the "Name" field under Query Library
 3. Click "Save" - the full form state is saved, not just the query text
 4. Load any saved query to restore the complete form and continue editing
+
+### Raw KQL Queries
+
+For queries the form can't build (`mv-expand`, `summarize`, `join`, `let`, multi-statement):
+
+1. Tick **Edit / paste raw KQL** above the preview - the preview becomes editable and the form is ignored
+2. Paste or write your full query (optionally start from a form-built skeleton, then hand-edit)
+3. Save it like any other query - raw entries are stored as text and shown in orange in the library
+4. Loading a raw entry drops straight back into the editor; loading a form-built entry restores the form. Note: raw queries are one-way and cannot be reverse-parsed into the form.
 
 ### Example: Find Failed Sign-ins
 
