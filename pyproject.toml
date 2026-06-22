@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kustoforge"
-version = "1.0.0"
+version = "1.1.0"
 description = "A desktop KQL query builder for Microsoft security and Azure services"
 readme = "README.md"
 license = {text = "MIT"}
